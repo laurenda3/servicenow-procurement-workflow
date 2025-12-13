@@ -1,4 +1,4 @@
-# Project 2: Procurement & Budget Control Workflow
+# Procurement & Budget Control Workflow
 
 **ServiceNow Portfolio Project** | *Efficiency-Creator*
 
@@ -185,9 +185,9 @@ An automated procurement approval workflow built in ServiceNow to bring financia
 
 ## Author
 
-Lauren Anderson  
+Laurenda Landry  
 ServiceNow Developer Portfolio  
-[LinkedIn](https://linkedin.com/in/your-profile) | [Portfolio](https://your-portfolio.com)
+[LinkedIn](https://linkedin.com/in/lauland) | [Portfolio](https://lauland.dev)
 
 ## License
 
