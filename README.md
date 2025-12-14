@@ -1,7 +1,5 @@
 # Procurement & Budget Control Workflow
 
-**ServiceNow Portfolio Project** | *Efficiency-Creator*
-
 ## Overview
 
 An automated procurement approval workflow built in ServiceNow to bring financial controls to maintenance spending. This project demonstrates multi-level approval logic, email automation, and budget management - solving the problem of unauthorized purchases and duplicate orders.
@@ -28,8 +26,8 @@ An automated procurement approval workflow built in ServiceNow to bring financia
 
 **Core Tables:**
 - **Procurement Request Table** (`u_procurement_request`) - Purchase requisitions with approval tracking
-- **Appliance Model Table** (from Project 1) - Equipment specifications and costs
-- **Appliance Table** (from Project 1) - Current inventory linkage
+- **Appliance Model Table** (from Asset Management system) - Equipment specifications and costs
+- **Appliance Table** (from Asset Management system) - Current inventory linkage
 
 ### Approval Workflow Logic
 
@@ -149,22 +147,13 @@ An automated procurement approval workflow built in ServiceNow to bring financia
 6. Configure approval thresholds
 
 **Dependencies:**
-- Project 1 tables (Appliance, Appliance Model)
+- Asset Management tables (Appliance, Appliance Model)
 - Email configuration enabled
 - Flow Designer access
 
-## Portfolio Talking Points
-
-**Elevator Pitch:**
-> "I built an automated procurement workflow that eliminated $60K in wasteful spending annually. The system enforces three-tier approvals based on cost, checks inventory before approving purchases, and sends email notifications automatically. Procurement cycle time dropped from 7 days to 1.5 days because 65% of routine requests auto-approve, while high-value purchases get proper oversight. The property now has complete budget visibility and a full audit trail for HUD compliance."
-
-**Technical Highlight:**
-> "The most complex part was the inventory-aware purchasing logic. Before approving an appliance request, the Flow Designer workflow queries the Appliance table for matching models where status equals 'In Stock'. If found, it sends an email to the requester showing the location and asks if they still want to proceed. This uses ServiceNow's GlideRecord API within Flow Designer to perform the lookup, then conditional branching to route the email. It's prevented 15+ duplicate purchases in 6 months, saving $18K."
-
-**Business Value:**
-> "The property manager told me this system paid for itself in the first month. They discovered the maintenance supervisor was ordering three different brands of air filters monthly because he couldn't remember what was already ordered. The inventory check feature flagged the duplicates immediately. They've now standardized on one brand and save $200/month just on filters. Multiply that across all supplies and the savings are significant."
-
 ## Technologies
+
+
 
 - ServiceNow Flow Designer (Visual workflow automation)
 - Email Notifications (SMTP integration)
@@ -189,12 +178,6 @@ Laurenda Landry
 ServiceNow Developer Portfolio  
 [LinkedIn](https://linkedin.com/in/lauland) | [Portfolio](https://lauland.dev)
 
-## License
-
-Educational/Portfolio Project - Not for commercial use
-
 ---
 
-**Project Status:** ✅ Complete  
-**Build Time:** 4 hours  
-**Completion Date:** December 12, 2024
+*Built with ServiceNow Platform (Zurich Release)*
