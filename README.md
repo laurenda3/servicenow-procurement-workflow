@@ -1,183 +1,282 @@
-# Procurement & Budget Control Workflow
+# Financial Governance & Procurement Application
 
-## Overview
+**A scoped ServiceNow application engineered to enforce fiscal governance, automate multi-tier approvals, and eliminate unauthorized spending through intelligent workflow logic.**
 
-An automated procurement approval workflow built in ServiceNow to bring financial controls to maintenance spending. This project demonstrates multi-level approval logic, email automation, and budget management - solving the problem of unauthorized purchases and duplicate orders.
+---
 
-## Business Problem Solved
+## 📖 Executive Summary
 
-**Before:**
-- Maintenance supervisor ordered supplies without oversight
-- Double/triple ordering due to inability to find existing stock
-- No budget tracking or spending controls
-- $50K+ in unauthorized annual spending
-- Broken appliances accumulated instead of disposal
+**Role:** ServiceNow Developer / Workflow Architect  
+**Platform:** Zurich Release  
+**Focus:** Process Automation, Financial Controls, Flow Designer
 
-**After:**
-- 100% purchase order approval enforcement  
-- Three-tier approval workflow based on cost thresholds
-- Inventory-aware purchasing (prevents duplicate orders)
-- Complete audit trail for all procurement
-- Budget visibility and spending controls
+Addresses a critical gap in property management operations: the lack of oversight in maintenance purchasing. Replaces manual, offline ordering with a digital, gated workflow, providing **100% auditability** and preventing duplicate spending through intelligent inventory checks integrated with the Asset Management system.
 
-## Technical Implementation
+---
 
-### Data Model
+## 🚧 The Business Challenge
+
+Prior to this implementation, the organization faced significant financial leakage:
+
+* **$50K+ annual unauthorized spending** due to lack of approval gates
+* **Redundant purchasing:** Supervisors ordered parts already in stock because inventory data was disconnected from procurement
+* **Zero visibility:** No real-time tracking of budget vs. actuals
+* **Process latency:** A 7-day manual approval cycle delayed critical repairs
+* **No audit trail:** Paper-based requisitions impossible to track or analyze historically
+
+---
+
+## 🛠 Solution Architecture
+
+Engineered as a **scoped application** utilizing **Flow Designer** for conditional approval logic and a custom data model integrated with existing asset tables.
+
+### Data Model & Integration
 
 **Core Tables:**
-- **Procurement Request Table** (`u_procurement_request`) - Purchase requisitions with approval tracking
-- **Appliance Model Table** (from Asset Management system) - Equipment specifications and costs
-- **Appliance Table** (from Asset Management system) - Current inventory linkage
+* **`u_procurement_request` (Extends: Task):** Core table managing the request lifecycle, state transitions, and approval logs. Inherits workflow capabilities from the Task table.
+* **Integration: `u_appliance_model`:** Reference relationship to the Asset Management system's equipment catalog for parts validation
+* **Integration: `u_appliance`:** Live inventory query via GlideRecord to check stock availability before approval
 
-### Approval Workflow Logic
+**Relationships:**
+* Procurement Request → Reference → Appliance Model (What is being requested)
+* Procurement Request → Lookup → Appliance Table (Check if already in stock)
 
-**Flow Designer Multi-Tier Approval:**
-1. **Under $500:** Auto-approved (immediate processing)
-2. **$500 - $1,999:** Maintenance Supervisor approval required
-3. **$2,000+:** Dual approval (Supervisor + Property Manager)
+**Data Integrity:**
+* Required field validation (Budget Code, Vendor, Estimated Cost)
+* Choice field constraints for budget categorization (HVAC, Plumbing, Electrical, etc.)
+* Calculated fields for total cost and approval tier assignment
 
-**Email Notifications:**
-- Approval request sent to appropriate manager
-- Requester notified of approval/rejection
-- Budget alerts when spending exceeds threshold
-- Inventory availability alerts
+---
 
-### Key Features
+## 💻 Automation & Business Logic
 
-1. **Smart Inventory Check**
-   - Before approving appliance purchases, system queries existing inventory
-   - Alerts requester if matching item already in stock
-   - Shows current location (e.g., "In Stock - Community Room")
-   - Prevents duplicate purchases
+### Backend Automation (Server-Side JavaScript)
 
-2. **Auto-Calculated Approval Levels**
-   - Business rule auto-sets approval requirements based on total cost
-   - Escalates to dual approval for high-value items
-   - Configurable thresholds per property budget
+**1. Dynamic Approval Tier Calculation (Business Rule - Before Insert)**
+```javascript
+// Auto-calculate approval requirements based on financial thresholds
+(function executeRule(current, previous) {
+    var totalCost = parseFloat(current.estimated_cost) || 0;
+    
+    if (totalCost < 500) {
+        current.approval_required = false;
+        current.state = 'approved'; // Auto-approve routine purchases
+    } else if (totalCost >= 500 && totalCost < 2000) {
+        current.approval_required = true;
+        current.approval_tier = 'supervisor';
+    } else {
+        current.approval_required = true;
+        current.approval_tier = 'dual'; // Supervisor + Property Manager
+    }
+})(current, previous);
+```
 
-3. **Budget Code Tracking**
-   - Categorizes spending: HVAC, Plumbing, Electrical, Turn-Key, etc.
-   - Monthly reporting by category
-   - YTD spending vs. budget tracking
+**2. Inventory Duplication Prevention (Business Rule - Before Submit)**
+* GlideRecord query checks the `u_appliance` table for matching appliance models
+* If a matching item exists with status "In Stock," user receives client-side alert with current location
+* Prevents unnecessary purchasing of already-owned equipment
 
-4. **Complete Audit Trail**
-   - Tracks: Requester, approvers, dates, rejection reasons
-   - Linked to asset records (procurement → appliance)
-   - Historical spending analysis
+**3. Budget Variance Alerts (Business Rule - After Insert)**
+* On approval, the system aggregates YTD spending by budget code
+* If category spending exceeds 90% of allocated budget, automated email alert sent to Property Manager
 
-### ServiceNow Components Used
+---
 
-- **Flow Designer**: Multi-decision approval workflow with conditional routing
-- **Email Notifications**: Branded templates for approval requests
-- **Business Rules**: Auto-calculation of costs and approval tiers
-- **Service Catalog**: Self-service procurement request form
-- **Reports**: Bar charts showing spending by category and approval efficiency
+### Workflow Automation (Flow Designer)
 
-## Skills Demonstrated
+**Multi-Tier Approval Flow:**
 
-### Technical Skills
-- Flow Designer advanced logic (conditional branches, approvals)
-- Email template configuration and branding
-- Business rule scripting for calculations
-- Service Catalog form design
-- Data validation and required field enforcement
-- Query logic for inventory checking
+**Trigger:** Procurement Request state changes to "Pending Approval"
 
-### Business Skills
-- Financial controls and approval hierarchies
-- Budget management and cost tracking
-- Process optimization (7-day → 2-day procurement cycle)
-- Inventory management
-- Vendor relationship management
-- Audit compliance
+**Logic Sequence:**
+1. **Conditional Branch 1:** If `approval_tier` = "supervisor"
+   - **Action:** Ask for Approval (Assigned to: Maintenance Supervisor)
+   - **Timeout:** 3 days auto-escalate to manager
+   
+2. **Conditional Branch 2:** If `approval_tier` = "dual"
+   - **Action 1:** Ask for Approval (Supervisor)
+   - **Action 2:** If approved → Ask for Approval (Property Manager)
+   - **Logic:** Sequential dual-gate approval
+   
+3. **Notification Actions:**
+   - **On Approval:** Email requester → "Your request has been approved"
+   - **On Rejection:** Email requester → "Your request was rejected. Reason: [rejection_notes]"
 
-## Business Impact
+**Email Templates:**
+* HTML-formatted approval request emails with embedded request details
+* Clickable "Approve" and "Reject" buttons directly in email (ServiceNow email client integration)
 
-**Cost Control:**
-- Eliminated 100% of unauthorized purchases
-- Prevented $18K in duplicate orders (first 6 months)
-- Reduced procurement spending by 25% through inventory visibility
-- Saved $12K annually in "convenience ordering"
+---
 
-**Process Efficiency:**
-- Procurement cycle time reduced from 7 days to 1.5 days
-- Auto-approval for routine items (65% of requests)
-- 95% approval rate (shows justified purchasing)
-- Zero lost purchase requests (digital tracking)
+## 📊 Business Impact & ROI
 
-**Compliance:**
-- 100% audit trail for all spending
-- Budget variance reports for HUD compliance
-- Automatic budget alerts prevent overspending
+Post-implementation metrics based on 6 months of operation:
 
-**ROI:** 320% in first year ($60K saved on $18K implementation cost)
+| Metric | Result | Details |
+|:-------|:-------|:--------|
+| **ROI (Year 1)** | **320%** | $60K saved vs. $18K implementation cost |
+| **Unauthorized Spending** | **$0** | 100% elimination through approval gates |
+| **Duplicate Orders Prevented** | **$18K** | 15 instances caught by inventory lookup |
+| **Cycle Time** | **7 Days → 1.5 Days** | 78% reduction in procurement wait time |
+| **Auto-Approvals** | **65%** | Routine items (<$500) instantly approved |
+| **Approval Rate** | **95%** | Shows purchasing is justified and strategic |
+| **Audit Compliance** | **100%** | Full digital trail for all spending |
 
-## Screenshots
+---
 
-### Procurement Requests List
-![Procurement Requests List](assets/01_procurement_requests_list.png)
-*Dashboard showing pending, approved, and rejected purchase requests*
+## 🔑 Key Features Demonstrated
 
-### Procurement Request Form
-![Procurement Request Form](assets/02_procurement_request_form.png)
-*Clean entry form with auto-calculated totals and approval level*
+### 1. Smart Inventory Integration
+* **Real-time inventory lookup** via GlideRecord queries to `u_appliance` table
+* **Duplicate prevention alerts:** "Item already in stock - Location: Community Room"
+* **Cross-application data integration** between Procurement and Asset Management systems
 
-### Flow Designer Canvas
-![Flow Designer Canvas](assets/03_flow_designer_canvas.png)
-*Multi-tier approval workflow with conditional routing based on cost*
+### 2. Financial Control Automation
+* **Three-tier approval hierarchy:** Auto-approve (<$500), Supervisor ($500-$1,999), Dual ($2,000+)
+* **Budget code categorization:** HVAC, Plumbing, Electrical, Turn-Key, Emergency
+* **Spending variance alerts:** Automated notifications when budget thresholds approached
 
-### Email Notification Configuration
-![Email Configuration](assets/04_send_email_configuration.png)
-*Approval request email template with branded formatting*
+### 3. Process Efficiency
+* **Automated approval routing:** No manual forwarding or email chains
+* **Email-based approvals:** Approvers can respond directly from inbox
+* **Complete audit trail:** Requester, approvers, dates, rejection reasons all logged
 
-### Email Delivery Proof
-![Email Sent](assets/05_email_sent_proof.png)
-*Successful notification delivery to approver*
+---
 
-## Installation Notes
+## 📸 Solution Gallery
 
-**ServiceNow Instance:** Personal Developer Instance (PDI) - Zurich release
+### 1. Procurement Dashboard
+![Procurement Requests List](assets/01_procurement_requests_list.png)  
+*Real-time view of pending, approved, and rejected purchase requests with status tracking*
 
-**Setup Steps:**
-1. Create Procurement Request table
-2. Build Flow Designer approval workflow
-3. Configure email notification templates
-4. Set up budget code choice list
-5. Create Service Catalog item (optional)
-6. Configure approval thresholds
+### 2. Intelligent Request Form
+![Procurement Request Form](assets/02_procurement_request_form.png)  
+*Self-service form with auto-calculated totals and approval tier assignment. Includes justification field for audit compliance*
 
-**Dependencies:**
-- Asset Management tables (Appliance, Appliance Model)
-- Email configuration enabled
-- Flow Designer access
+### 3. Flow Designer Approval Logic
+![Flow Designer Canvas](assets/03_flow_designer_canvas.png)  
+*Multi-tier approval workflow showing conditional branching based on financial thresholds (<$500 auto-approve, $500-$1999 supervisor, $2000+ dual approval)*
 
-## Technologies
+### 4. Email Notification Template
+![Email Configuration](assets/04_send_email_configuration.png)  
+*HTML-formatted approval request email with embedded request details and action buttons*
 
+### 5. Notification Delivery Proof
+![Email Sent](assets/05_email_sent_proof.png)  
+*System log showing successful email delivery to approver with timestamp*
 
+---
 
-- ServiceNow Flow Designer (Visual workflow automation)
-- Email Notifications (SMTP integration)
-- Business Rules (JavaScript)
-- Service Catalog (Self-service portal)
-- GlideRecord API (Database queries)
-- Approval Engine (Multi-level routing)
+## 💻 Technical Stack
 
-## Key Metrics
+**Platform:**
+* ServiceNow Zurich Release
+* Custom Application Scope (Scoped App Development)
 
-- **Requests Processed:** 200+ in 6 months
-- **Auto-Approvals:** 65% (under $500)
-- **Supervisor Approvals:** 30% ($500-$1,999)
-- **Dual Approvals:** 5% ($2,000+)
-- **Approval Rate:** 95% (shows justified requests)
-- **Average Approval Time:** 1.5 days (down from 7)
-- **Duplicate Orders Prevented:** 15 instances ($18K savings)
+**Workflow Automation:**
+* Flow Designer (visual workflow builder)
+* Action Designer (custom approval actions)
+* Approval Engine (multi-tier routing logic)
 
-## Author
+**Backend Development:**
+* Server-side JavaScript (Business Rules)
+* GlideRecord API (database queries for inventory checks)
+* GlideDateTime API (deadline calculations)
 
-Laurenda Landry  
-ServiceNow Developer Portfolio  
+**Integration:**
+* Cross-scope application integration (Procurement ↔ Asset Management)
+* Email SMTP integration for notifications
+* Reference field relationships between tables
+
+**UI/UX:**
+* Service Catalog (self-service request form)
+* UI Policies (conditional field visibility)
+* Client Scripts (real-time validation)
+
+---
+
+## 🚀 Installation & Deployment
+
+**Environment:** Personal Developer Instance (PDI) - Zurich Release
+
+**Prerequisites:**
+* Asset Management application (Project 1) must be deployed first
+* Email configuration enabled (SMTP settings)
+* Flow Designer plugin activated
+
+**Setup Process:**
+1. Create custom table: `u_procurement_request` (extends Task)
+2. Configure choice lists for budget codes and approval tiers
+3. Build Flow Designer workflow with conditional approval logic
+4. Deploy business rules for cost calculation and inventory checks
+5. Configure email notification templates (HTML formatting)
+6. Create Service Catalog item for self-service access (optional)
+7. Set approval thresholds and budget codes per business requirements
+
+---
+
+## 🎯 Skills Showcased
+
+**Workflow Design:**
+* Flow Designer visual workflow building
+* Conditional branching logic (if/else routing)
+* Multi-approver sequential workflows
+* Timeout and escalation rules
+
+**Development:**
+* Server-side JavaScript (Business Rules)
+* GlideRecord API for cross-table queries
+* Data validation and calculated fields
+* Email template configuration (HTML)
+
+**Process Automation:**
+* Financial governance and approval hierarchies
+* Budget management and variance tracking
+* Inventory integration for duplicate prevention
+* Audit trail maintenance
+
+**Business Analysis:**
+* Cost-benefit analysis and ROI calculation
+* Process optimization (cycle time reduction)
+* Stakeholder requirement gathering
+* Compliance-focused solution design
+
+---
+
+## 🔗 Integration with Portfolio Projects
+
+This application integrates with other portfolio solutions:
+
+* **Project 1 (Asset Management):** Queries `u_appliance` and `u_appliance_model` tables to prevent duplicate purchases
+* **Project 5 (Executive Dashboard):** Could add widget showing "Pending Approvals" count or spending by category
+
+---
+
+## 🎁 Key Deliverables
+
+**Automation:**
+- Flow Designer workflow with 3-tier approval logic
+- Business rules for cost calculation and inventory checks
+- Email notification templates with approval actions
+
+**Data Model:**
+- Custom procurement request table with approval tracking
+- Integration points with Asset Management system
+
+**Documentation:**
+- Solution architecture diagram
+- User guide for requesters and approvers
+- Admin configuration guide
+
+---
+
+## 👤 Author
+
+**Laurenda Landry**  
+ServiceNow Developer | Workflow Automation Specialist
+
 [LinkedIn](https://linkedin.com/in/lauland) | [Portfolio](https://lauland.dev)
 
 ---
 
-*Built with ServiceNow Platform (Zurich Release)*
+*Engineered on ServiceNow Platform (Zurich Release)*
