@@ -1,72 +1,39 @@
-# Procurement Workflow Automation
+# Technical Brief: Procurement Workflow Automation
 
-Designed and delivered a procurement workflow application to enforce budget controls and prevent unauthorized spending. Automated multi-tier approvals based on purchase amount, integrated with asset inventory to prevent duplicate orders, and provided complete audit trail for compliance.
+## The Problem
+In decentralized industrial operations, "blind spending" is a major risk. Without centralized approval gates, property managers were seeing a high volume of unauthorized purchases and, more importantly, duplicate ordering of major appliances because buyers had no visibility into existing inventory. This led to budget overruns and equipment stockpiles that sat unused while capital was tied up.
 
-**Business Value:** Enforces mandatory approvals, eliminates duplicate purchasing, reduces manual approval routing, and provides compliance audit trail.
-
----
-
-## Business Problem
-
-**Before:**
-- Unauthorized spending due to lack of approval gates
-- Duplicate purchasing - no inventory visibility during ordering process
-- Manual approval routing created delays for critical repairs
-- No audit trail for compliance or budget tracking
+## The Solution
+I built a **Procurement Control System** on the **ServiceNow Zurich release** that integrates spend management with asset intelligence. My objective was to build a system that doesn't just route approvals, but actually checks the existing asset inventory before allowing a purchase request to proceed. This ensures that every dollar spent is a necessity, not an oversight.
 
 ---
 
-## Solution Delivered
+## Technical Architecture
 
-**Custom Procurement Application:**
-- Created procurement request table with approval tracking
-- Implemented Flow Designer workflow with 3-tier approval logic:
-  - Under $500: Auto-approved
-  - $500-$1,999: Supervisor approval required
-  - $2,000+: Dual approval (Supervisor + Property Manager)
-- Integrated with Asset Management tables for real-time inventory lookup
-- Built email notifications for approval requests and status updates
-- Configured complete audit trail (requester, approvers, dates, rejection reasons)
+### Flow Designer & Approval Steps
+I chose to build the core engine in **Flow Designer** to provide a clear, easy-to-follow process for purchase requests.
+*   **How it works:** I built a **step-by-step approval process**. Instead of simple "Approved/Rejected," the system tracks `Pending Approval`, `Awaiting Inventory Check`, `Approved`, and `Ordered`. This gives the Service Desk a detailed view of exactly where a request is stuck.
+*   **Automatic Rules:** The workflow uses "if/then" rules to handle my 3-tier approval strategy (Auto-approve < $500, Single-tier $500-$1,999, Dual-tier $2,000+).
 
----
+### Data Modeling & License Optimization
+*   **Architecture Strategy:** I designed the procurement request table as a custom table rather than extending a heavily-licensed ITOM table. This ensures the application remains highly functional while being **license-efficient** for the organization.
+*   **Inventory Intelligence:** To solve the duplicate purchase problem, I built an automated **Inventory Check** step using the `ProcurementUtils` Script Include. This "Shift-Left" approach identifies available stock *before* any human approver is notified.
 
-## Business Value
-
-**What the System Does:**
-- **Enforces budget controls** through mandatory approval gates based on dollar thresholds
-- **Prevents duplicate purchasing** by querying asset inventory before approval
-- **Reduces approval cycle time** through automated workflow routing (no manual forwarding)
-- **Provides audit compliance** with complete digital trail of all spending decisions
-- **Enables data-driven budgeting** through procurement reporting by category
+### Server-Side Rules (Script Includes)
+*   **Keeping Rules in One Place:** I moved the approval limits and inventory lookup rules into one organized script (`ProcurementUtils`). This makes sure the system uses the same financial limits everywhere, making it easy to update if those limits change later.
 
 ---
 
-## Technical Highlights
+## Key Features
+*   **3-Tier Approval Logic:** Automated routing based on dollar thresholds, removing the manual "who do I send this to?" bottleneck.
+*   **Inventory-Aware Ordering:** Automatically flags available stock to prevent duplicate equipment purchases.
+*   **Digital Audit Trail:** A defensible record of every approval and rejection reason, stored permanently on the Task-extended record.
+*   **Auto-Approve Thresholds:** Streamlines low-cost ordering (under $500) to keep maintenance teams moving without red tape.
 
-**ServiceNow Features Used:**
-- **Flow Designer:** Conditional approval routing with dollar-threshold logic
-- **Business Rules:** Auto-calculate approval tier based on estimated cost
-- **Email Notifications:** Branded approval request templates
-- **GlideRecord API:** Inventory lookup queries to prevent duplicate orders
-- **Reference Fields:** Integration with Asset Management (`u_appliance`, `u_appliance_model` tables)
-- **Service Catalog:** Self-service procurement request form (optional)
-
-**Code Example - Business Rule:**
-```javascript
-// Auto-calculate approval requirements based on purchase amount
-(function executeRule(current, previous) {
-    var totalCost = parseFloat(current.estimated_cost) || 0;
-    
-    if (totalCost < 500) {
-        current.approval_required = false;
-        current.state = 'approved';
-    } else if (totalCost >= 500 && totalCost < 2000) {
-        current.approval_tier = 'supervisor';
-    } else {
-        current.approval_tier = 'dual';
-    }
-})(current, previous);
-```
+## How to Review
+To evaluate the technical implementation of this project, please review:
+*   **Organized Code:** `scripts/ProcurementUtils.js` - See how I handle the approval limits and inventory checks in one place.
+*   **Workflow Steps:** Check the Flow Designer screenshots below to see how I managed the approval steps and "if/then" rules.
 
 ---
 
@@ -84,46 +51,11 @@ Designed and delivered a procurement workflow application to enforce budget cont
 ![Flow Designer](assets/03_flow_designer_canvas.png)  
 *Multi-tier approval workflow showing conditional branching based on dollar thresholds*
 
-### Email Notification Template
-![Email Template](assets/04_send_email_configuration.png)  
-*Branded approval request email with embedded request details*
-
-### Email Delivery Proof
-![Email Sent](assets/05_email_sent_proof.png)  
-*System log confirming successful email delivery to approver*
-
 ---
 
-## Setup Notes
-
-**Environment:** ServiceNow Personal Developer Instance (Zurich Release)
-
-**Prerequisites:**
-- Asset Management tables (from related portfolio project)
-- Email configuration enabled
-- Flow Designer access
-
-**Key Tables:**
-- `u_procurement_request` (custom table - extends Task)
-- Integration: `u_appliance_model`, `u_appliance` (inventory lookup)
+- Inventory Checks
+- Custom Table Design
 
 ---
-
-## Technologies
-
-- ServiceNow Flow Designer
-- Business Rules (Server-side JavaScript)
-- GlideRecord API
-- Email Notifications
-- Service Catalog
-- Reference Fields
-
----
-
-## Related Projects
-
-Integrates with [Asset & NSPIRE Compliance Application](../project1_asset_compliance) for inventory lookup functionality.
-
----
-
-**Built on ServiceNow Platform (Zurich Release)**
+**Developed by Laurenda Landry**  
+*10 years experience in Industrial Operations & Compliance*
